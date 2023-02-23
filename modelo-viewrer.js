@@ -22,6 +22,7 @@ const treeButton = document.getElementById("tree-button");
 const treeContainer = document.getElementById("tree-container");
 const visionButton = document.getElementById("visibility-button");
 const checkboxesOfType = document.getElementById("checkbox-category");
+const complexCheckboxes = document.getElementById("checkbox-category-levels");
 
 //IDENTIFICACIÓN DEL PROYECTO
 const currenturl = window.location.href;
@@ -52,6 +53,7 @@ const subsetOfModel = await visualSetup();
 //postprocessingPorperties();
 let modelProperties;
 await loadProperties();
+const propertyValues = loadPropertiesValues(modelProperties)
 const psets = getAllPsets();
 const saceemPsets = getAllSaceem(psets);
 const saceemParams = getAllSaceemParameters(saceemPsets);
@@ -60,9 +62,9 @@ const saceemTypes = getAllSaceemTypes(saceemParams);
 const saceemIds = getAllSaceemIds(saceemParams);
 const saceemConcreteDates = getAllSaceemConcreteDates(saceemParams);
 
-let elementsHidden = [];
 const categorySubsets={};
 const ifcTypes = returnTypesOfElements();
+
 const treeStructure = await viewer.IFC.getSpatialStructure(model.modelID);
 
 window.onmousemove = async () => await viewer.IFC.selector.prePickIfcItem();
@@ -112,7 +114,7 @@ visionButton.onclick = async () => {
   if (specialVisionActive) {
     visionButton.classList.add("active-button");
     checkboxesOfType.style.zIndex=2;
-    await createCheckBoxStructure(checkboxesOfType);
+    await createCheckBoxStructure();
   } else {
     for(let subset in categorySubsets){
       categorySubsets[subset].removeFromParent();
@@ -228,10 +230,6 @@ document.addEventListener("click", async (e) => {
     contextMenu.style.display = "none";
     if (rigthClickResult === null) return;
     hideClickedItem(rigthClickResult);
-    /*const index = rigthClickResult.faceIndex;
-    const id = viewer.IFC.loader.ifcManager.getExpressId(model.geometry, index);
-    console.log(id);
-    viewer.IFC.loader.ifcManager.removeFromSubset(model.modelID, [id]);*/
   }
 
   if (e.target.getAttribute("id") === "isolate-element") {
@@ -239,7 +237,6 @@ document.addEventListener("click", async (e) => {
     if (rigthClickResult === null) return;
     const index = rigthClickResult.faceIndex;
     const id = viewer.IFC.loader.ifcManager.getExpressId(model.geometry, index);
-    console.log(id);
     await viewer.IFC.selector.highlightIfcItemsByID(model.modelID, [id], true);
   }
 
@@ -279,6 +276,10 @@ async function postprocessingPorperties(){
 async function loadProperties(){
   const rawProperties = await fetch(`./resources/json/properties_${projectObj.name}.json`);
   modelProperties = await rawProperties.json();
+}
+
+function loadPropertiesValues(properties){
+  return Object.values(properties);
 }
 
 function virtualLink(url, downloadDoc) {
@@ -562,16 +563,21 @@ function createPropertyEntry(key, value, container) {
   container.appendChild(propContainer);
 }
 
-async function createCheckBoxStructure(mainContainer) {
-  const categoriesHeader = document.createElement("div");
-  categoriesHeader.textContent = "Categorías IFC";
-  categoriesHeader.classList.add("categories-header");
-  mainContainer.appendChild(categoriesHeader);
-  const categoriesContainer = document.createElement("div");
-  categoriesContainer.classList.add("categories-structure");
-  mainContainer.appendChild(categoriesContainer);
+function checkBoxMainStructure(mainContainer){
+  const listHeader = document.createElement("div");
+  listHeader.textContent = "Distribución Espacial";
+  listHeader.classList.add("categories-header");
+  mainContainer.appendChild(listHeader);
+  const subContainer = document.createElement("div");
+  subContainer.classList.add("categories-structure");
+  mainContainer.appendChild(subContainer);
+  return subContainer;
+}
+
+async function createCheckBoxStructure() {
+  const categoriesContainer = checkBoxMainStructure(checkboxesOfType);
   for (let cat in ifcTypes) {
-    const categoryElements = createCheckBoxCat(ifcTypes[cat]);
+    const categoryElements = createCheckBox(ifcTypes[cat],"ifcType");
     categoryElements[0].prepend(categoryElements[1]);
     categoriesContainer.appendChild(categoryElements[0]);
   }
@@ -580,13 +586,18 @@ async function createCheckBoxStructure(mainContainer) {
   await setupAllCategories();
 }
 
-function createCheckBoxCat(categoryName){
+function createCheckBox(name,type){
   const checkbox = document.createElement("div");
+  //checkbox.classList.add("checkboxes-children");
   const input = document.createElement("input");
   input.setAttribute("checked",true);
   input.setAttribute("type","checkbox");
-  input.setAttribute("id",categoryName);
-  checkbox.textContent = traslateIfcType(categoryName);
+  input.setAttribute("id",name);
+  if (type === "ifcType"){
+    checkbox.textContent = traslateIfcType(name);
+  }else{
+    checkbox.textContent = name;
+  }
   return [checkbox,input];
 }
 
@@ -636,7 +647,6 @@ function setupCheckBox(category){
 }
 
 function getAllPsets(){
-  const propertyValues = Object.values(modelProperties);
   return propertyValues.filter(item => item.type === "IFCRELDEFINESBYPROPERTIES");
 }
 
@@ -737,3 +747,95 @@ function togglePickable(mesh, isPeackable) {
     pickable.splice(index, 1);
   }
 }
+
+async function createComplexCheckBoxStructure(mainContainer) {
+  const levelContainer = checkBoxMainStructure(mainContainer);
+  const allLevels = getAllLevels();
+  for (let level of allLevels) {
+    const levelElement = createCheckBox(level.Name,"ifcLevel");
+    levelElement[0].prepend(levelElement[1]);
+    levelContainer.appendChild(levelElement[0]);
+    const ifcTypesInLevel = getTypesInLevel(level.expressID);
+    for (let ifcType of ifcTypesInLevel){
+      const typeSubElement = createCheckBox(ifcType,"ifcType");
+      typeSubElement[1].setAttribute("id",`${level.Name}_${ifcType}`);
+      typeSubElement[0].prepend(typeSubElement[1]);
+      levelContainer.appendChild(typeSubElement[0]);
+      typeSubElement[0].classList.add("checkboxes-children");
+    }
+    setupLevelCheckBox(level);
+  }
+  /*subsetOfModel.removeFromParent();
+  togglePickable(subsetOfModel, false);
+  await setupAllCategories();*/
+}
+
+createComplexCheckBoxStructure(complexCheckboxes);
+
+function getAllLevels(){
+  let levels = [];
+  for (let rel of getAllSpatialRelations(propertyValues)){
+    levels.push(propertyValues.filter(item => item.expressID === rel.RelatingStructure)[0]);
+  }
+  return levels;
+}
+
+function getTypesInLevel(levelId){
+  const spaceRelations = getAllSpatialRelations(propertyValues);
+  const ifcTypesList = Object.values(ifcTypes);
+  const levelRelations = spaceRelations.filter(item => item.RelatingStructure === levelId)[0];
+  const typesInLevel = [];
+  for (let elementId of levelRelations.RelatedElements){
+    for (let type of ifcTypesList){
+      const elementType = modelProperties[elementId].type;
+      if (elementType === type){
+        typesInLevel.push(elementType);
+      }
+    }
+  }
+  return Array.from(new Set(typesInLevel));
+}
+
+function getAllSpatialRelations(properties){
+  return properties.filter(item => item.type === "IFCRELCONTAINEDINSPATIALSTRUCTURE")
+}
+function setupLevelCheckBox(level){
+  const name = level.Name;
+  const inputOrder = "0";
+  const checkboxLevel = document.getElementById(name);
+  const checkboxesChildren = document.querySelectorAll(".checkboxes-children");
+  checkboxLevel.addEventListener("change",(e)=>{
+    const checked = e.target.checked;
+    if (checked){
+      for (let childNode of checkboxesChildren){
+        const inputType = childNode.childNodes[inputOrder];
+        const inputTypeId = inputType.id;
+        if (inputTypeId.includes(name)){
+          inputType.checked = true;
+        }
+      }
+    }else{
+      for (let childNode of checkboxesChildren){
+        const inputType = childNode.childNodes[inputOrder];
+        const inputTypeId = inputType.id;
+        if (inputTypeId.includes(name)){
+          inputType.checked = false;
+        }
+      }
+    }
+  })
+}
+
+/*
+function getAllTypes(){
+  const typeRelations = getAllTypeRelations(propertyValues);
+  let types = [];
+  for (let rel of typeRelations){
+    types.push(propertyValues.filter(item => item.expressID === rel.RelatingType)[0]);
+  }
+  return types;
+}
+
+function getAllTypeRelations(properties){
+  return properties.filter(item => item.type === "IFCRELDEFINESBYTYPE")
+}*/
