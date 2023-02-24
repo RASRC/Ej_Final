@@ -132945,28 +132945,14 @@ const visionButton = document.getElementById("visibility-button");
 const checkboxesOfType = document.getElementById("checkbox-category");
 const complexCheckboxes = document.getElementById("checkbox-category-levels");
 
-//IDENTIFICACIÓN DEL PROYECTO
-const currenturl = window.location.href;
-const url = new URL(currenturl);
-const idProperty = url.searchParams.get("id");
-
-const projectObjArray = proyectos.filter((model) => {
-  if (model.id === idProperty) {
-    return model;
-  }
-});
-
-const projectObj = projectObjArray[0];
-const projectTitle = projectObj.name;
-
-projectName.textContent = projectTitle;
-pageTitle.innerText=projectTitle;
-const modelURL = projectObj.url;
-
 //CONFIGURACION DE LA ESCENA Y SUS ELEMENTOS
 const viewer = await setupScene();
 setupMultiThreading();
 const scene = viewer.context.getScene();
+
+//CARGA DEL MODELO
+const modelURL = setupProject()[1];
+const modelName = setupProject()[0];
 const model = await viewer.IFC.loadIfcUrl(modelURL, true);
 const subsetOfModel = await visualSetup();
 
@@ -132976,19 +132962,18 @@ let modelProperties;
 await loadProperties();
 const propertyValues = loadPropertiesValues(modelProperties);
 const psets = getAllPsets();
+const treeStructure = await viewer.IFC.getSpatialStructure(model.modelID);
+const categorySubsets={};
+const categoryPerLevelSubsets={};
+const ifcTypes = returnTypesOfElements();
+
+//PROPIEDADES SACEEM
 const saceemPsets = getAllSaceem(psets);
 const saceemParams = getAllSaceemParameters(saceemPsets);
 
 const saceemTypes = getAllSaceemTypes(saceemParams);
 const saceemIds = getAllSaceemIds(saceemParams);
 getAllSaceemConcreteDates(saceemParams);
-
-const categorySubsets={};
-const ifcTypes = returnTypesOfElements();
-
-const treeStructure = await viewer.IFC.getSpatialStructure(model.modelID);
-
-window.onmousemove = async () => await viewer.IFC.selector.prePickIfcItem();
 
 //CONFIGURACIÓN BOTONES
 let activeSelection = false;
@@ -133081,7 +133066,9 @@ treeButton.onclick = async () => {
   }
 };
 
-//ACCIONES
+//CONFIGURACIÓN EVENTOS
+window.onmousemove = async () => await viewer.IFC.selector.prePickIfcItem();
+
 window.ondblclick = async () => {
   if (activeSelection) {
     const result = await viewer.IFC.selector.pickIfcItem(true);
@@ -133169,6 +133156,26 @@ document.addEventListener("click", async (e) => {
 });
 
 //FUNCIONES AUXILIARES
+function setupProject() {
+  const currenturl = window.location.href;
+  const url = new URL(currenturl);
+  const idProperty = url.searchParams.get("id");
+
+  const projectObjArray = proyectos.filter((model) => {
+    if (model.id === idProperty) {
+      return model;
+    }
+  });
+
+  const projectObj = projectObjArray[0];
+  const projectTitle = projectObj.name;
+  const projectURL = projectObj.url;
+
+  projectName.textContent = projectTitle;
+  pageTitle.innerText = projectTitle;
+
+  return [projectTitle,projectURL];
+}
 
 async function setupScene() {
   const viewer = new IfcViewerAPI({
@@ -133186,7 +133193,7 @@ async function setupMultiThreading(){
 }
 
 async function loadProperties(){
-  const rawProperties = await fetch(`./resources/json/properties_${projectObj.name}.json`);
+  const rawProperties = await fetch(`./resources/json/properties_${modelName}.json`);
   modelProperties = await rawProperties.json();
 }
 
@@ -133501,11 +133508,11 @@ function createCheckBox(name,type){
   const input = document.createElement("input");
   input.setAttribute("checked",true);
   input.setAttribute("type","checkbox");
-  input.setAttribute("id",name);
   if (type === "ifcType"){
     checkbox.textContent = traslateIfcType(name);
   }else {
     checkbox.textContent = name;
+    input.setAttribute("id",name);
   }
   return [checkbox,input];
 }
@@ -133666,17 +133673,13 @@ async function createComplexCheckBoxStructure(mainContainer) {
     levelContainer.appendChild(levelElement[0]);
     const ifcTypesInLevel = getTypesInLevel(level.expressID);
     for (let ifcType of ifcTypesInLevel){
-      const typeSubElement = createCheckBox(ifcType,"ifcType");
-      typeSubElement[1].setAttribute("id",`${level.Name}_${ifcType}`);
-      typeSubElement[0].prepend(typeSubElement[1]);
-      levelContainer.appendChild(typeSubElement[0]);
-      typeSubElement[0].classList.add("checkboxes-children");
+      await setupLevelAndCategory(level.Name,ifcType,levelContainer);
     }
     setupLevelCheckBox(level);
   }
-  /*subsetOfModel.removeFromParent();
+  subsetOfModel.removeFromParent();
   togglePickable(subsetOfModel, false);
-  await setupAllCategories();*/
+  console.log(categoryPerLevelSubsets);
 }
 
 createComplexCheckBoxStructure(complexCheckboxes);
@@ -133708,6 +133711,9 @@ function getTypesInLevel(levelId){
 function getAllSpatialRelations(properties){
   return properties.filter(item => item.type === "IFCRELCONTAINEDINSPATIALSTRUCTURE")
 }
+
+console.log(getAllSpatialRelations(propertyValues));
+
 function setupLevelCheckBox(level){
   const name = level.Name;
   const inputOrder = "0";
@@ -133731,6 +133737,55 @@ function setupLevelCheckBox(level){
           inputType.checked = false;
         }
       }
+    }
+  });
+}
+
+async function setupLevelAndCategory(level,category,container){
+  categoryPerLevelSubsets[`${level}_${category}`] = await newSubsetOfLevelAndType(level,category);
+  togglePickable(categoryPerLevelSubsets[`${level}_${category}`], true);
+  setupComplexCheckBox(level,category,container);
+}
+
+async function newSubsetOfLevelAndType(level,category){
+  const spatialRelations = getAllSpatialRelations(propertyValues);
+  const ids = [];
+  for (let relation of spatialRelations){
+    const levelProps = modelProperties[relation.RelatingStructure];
+    if(levelProps.Name === level){
+      const relatedLevelIds = relation.RelatedElements;
+      for (let id of relatedLevelIds){
+        const elementType = modelProperties[id].type;
+        if (elementType === category){
+          ids.push(id);
+        }
+      }
+    }
+  }
+  return viewer.IFC.loader.ifcManager.createSubset({
+    modelID: model.modelID,
+    scene,
+    ids,
+    removePrevious: true,
+    customID: `${level}_${category}`
+  })
+}
+
+function setupComplexCheckBox(level,category,container){
+  const typeSubElement = createCheckBox(category,"ifcType");
+  typeSubElement[1].setAttribute("id",`${level}_${category}`);
+  typeSubElement[0].prepend(typeSubElement[1]);
+  container.appendChild(typeSubElement[0]);
+  typeSubElement[0].classList.add("checkboxes-children");
+  typeSubElement[0].addEventListener("change",(e)=>{
+    const checked = e.target.checked;
+    const subset = categoryPerLevelSubsets[`${level}_${category}`];
+    if (checked){
+      scene.add(subset);
+      togglePickable(subset, true);
+    }else {
+      subset.removeFromParent();
+      togglePickable(subset, false);
     }
   });
 }
