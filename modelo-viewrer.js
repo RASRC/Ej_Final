@@ -469,7 +469,7 @@ async function nodeToSting(node) {
   const nodeProp = await propertiesOfNode(node);
 
   if (nameType === "IFCPROJECT"){
-    return projectTitle;
+    return modelName;
   }
   if (nameType === "IFCSITE"){
     return "SITE";
@@ -619,11 +619,11 @@ function createCheckBox(name,type){
   const input = document.createElement("input");
   input.setAttribute("checked",true);
   input.setAttribute("type","checkbox");
+  input.setAttribute("id",name);
   if (type === "ifcType"){
     checkbox.textContent = traslateIfcType(name);
   }else{
     checkbox.textContent = name;
-    input.setAttribute("id",name);
   }
   return [checkbox,input];
 }
