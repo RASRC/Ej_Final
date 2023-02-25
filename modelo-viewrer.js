@@ -19,6 +19,7 @@ const clippingButton = document.getElementById("clipping-button");
 const extendButton = document.getElementById("extends-button");
 const planFloorButton = document.getElementById("plan-floor-button");
 const treeButton = document.getElementById("tree-button");
+const spatialButton = document.getElementById("visibility-complex-button");
 const treeContainer = document.getElementById("tree-container");
 const visionButton = document.getElementById("visibility-button");
 const checkboxesOfType = document.getElementById("checkbox-category");
@@ -60,6 +61,7 @@ let clippingPlaneActive = false;
 let planFloorActive = false;
 let treeActive = false;
 let specialVisionActive = false;
+let spatialVisionActive = false;
 
 exitButton.onclick = () => {
   virtualLink("./index.html");
@@ -109,6 +111,24 @@ visionButton.onclick = async () => {
     visionButton.classList.remove("active-button");
     checkboxesOfType.style.zIndex=0;
     removeAllChildren(checkboxesOfType);
+  }
+};
+
+spatialButton.onclick = async () => {
+  spatialVisionActive = !spatialVisionActive;
+  if (spatialVisionActive) {
+    spatialButton.classList.add("active-button");
+    complexCheckboxes.style.zIndex=2;
+    await createComplexCheckBoxStructure(complexCheckboxes);
+  } else {
+    for(let subset in categoryPerLevelSubsets){
+      categoryPerLevelSubsets[subset].removeFromParent();
+    }
+    scene.add(subsetOfModel);
+    togglePickable(subsetOfModel, true);
+    spatialButton.classList.remove("active-button");
+    complexCheckboxes.style.zIndex=0;
+    removeAllChildren(complexCheckboxes);
   }
 };
 
@@ -770,10 +790,9 @@ async function createComplexCheckBoxStructure(mainContainer) {
   }
   subsetOfModel.removeFromParent();
   togglePickable(subsetOfModel, false);
-  console.log(categoryPerLevelSubsets);
 }
 
-createComplexCheckBoxStructure(complexCheckboxes);
+
 
 function getAllLevels(){
   let levels = [];
@@ -803,8 +822,6 @@ function getAllSpatialRelations(properties){
   return properties.filter(item => item.type === "IFCRELCONTAINEDINSPATIALSTRUCTURE")
 }
 
-console.log(getAllSpatialRelations(propertyValues));
-
 function setupLevelCheckBox(level){
   const name = level.Name;
   const inputOrder = "0";
@@ -813,19 +830,25 @@ function setupLevelCheckBox(level){
   checkboxLevel.addEventListener("change",(e)=>{
     const checked = e.target.checked;
     if (checked){
-      for (let childNode of checkboxesChildren){
+      for (let childNode of checkboxesChildren){      
         const inputType = childNode.childNodes[inputOrder];
         const inputTypeId = inputType.id;
+        const subset = categoryPerLevelSubsets[inputTypeId];
         if (inputTypeId.includes(name)){
           inputType.checked = true;
+          scene.add(subset);
+          togglePickable(subset, true);
         }
       }
     }else{
       for (let childNode of checkboxesChildren){
         const inputType = childNode.childNodes[inputOrder];
         const inputTypeId = inputType.id;
+        const subset = categoryPerLevelSubsets[inputTypeId];
         if (inputTypeId.includes(name)){
           inputType.checked = false;
+          subset.removeFromParent();
+          togglePickable(subset, false);
         }
       }
     }
@@ -853,13 +876,15 @@ async function newSubsetOfLevelAndType(level,category){
       }
     }
   }
+  if(ids.length){
   return viewer.IFC.loader.ifcManager.createSubset({
     modelID: model.modelID,
     scene,
     ids,
     removePrevious: true,
     customID: `${level}_${category}`
-  })
+    })
+  }
 }
 
 function setupComplexCheckBox(level,category,container){
