@@ -133687,6 +133687,8 @@ function togglePickable(mesh, isPeackable) {
 async function createComplexCheckBoxStructure(mainContainer) {
   const levelContainer = checkBoxMainStructure(mainContainer);
   const allLevels = getAllLevels();
+  subsetOfModel.removeFromParent();
+  togglePickable(subsetOfModel, false);
   for (let level of allLevels) {
     const levelElement = createCheckBox(level.Name,"ifcLevel");
     levelElement[0].prepend(levelElement[1]);
@@ -133697,8 +133699,6 @@ async function createComplexCheckBoxStructure(mainContainer) {
     }
     setupLevelCheckBox(level);
   }
-  subsetOfModel.removeFromParent();
-  togglePickable(subsetOfModel, false);
 }
 
 
