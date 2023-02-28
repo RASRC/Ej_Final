@@ -20,10 +20,12 @@ const extendButton = document.getElementById("extends-button");
 const planFloorButton = document.getElementById("plan-floor-button");
 const treeButton = document.getElementById("tree-button");
 const spatialButton = document.getElementById("visibility-complex-button");
+const timeButton = document.getElementById("crono-button");
 const treeContainer = document.getElementById("tree-container");
 const visionButton = document.getElementById("visibility-button");
 const checkboxesOfType = document.getElementById("checkbox-category");
 const complexCheckboxes = document.getElementById("checkbox-category-levels");
+const timeContainer = document.getElementById("checkbox-time");
 
 //CONFIGURACION DE LA ESCENA Y SUS ELEMENTOS
 const viewer = await setupScene();
@@ -54,6 +56,9 @@ const saceemParams = getAllSaceemParameters(saceemPsets);
 const saceemTypes = getAllSaceemTypes(saceemParams);
 const saceemIds = getAllSaceemIds(saceemParams);
 const saceemConcreteDates = getAllSaceemConcreteDates(saceemParams);
+const saceemAssembyDates = getAllSaceemAssemblyDates(saceemParams);
+const saceemVolumns = getAllSaceemQuantities(saceemParams);
+const presacStatus = getAllSaceemProcedences(saceemParams);
 
 //CONFIGURACIÓN BOTONES
 let activeSelection = false;
@@ -62,6 +67,7 @@ let planFloorActive = false;
 let treeActive = false;
 let specialVisionActive = false;
 let spatialVisionActive = false;
+let timeVisionActive = false;
 
 exitButton.onclick = () => {
   virtualLink("./index.html");
@@ -131,6 +137,27 @@ spatialButton.onclick = async () => {
     removeAllChildren(complexCheckboxes);
   }
 };
+
+timeButton.onclick = () => {
+  timeVisionActive = !timeVisionActive;
+  if (timeVisionActive) {
+    timeButton.classList.add("active-button");
+    createTimeCheckBoxStructure(timeContainer);
+    timeContainer.style.zIndex=2;
+    //await createComplexCheckBoxStructure(complexCheckboxes);
+  } else {
+    /*for(let subset in categoryPerLevelSubsets){
+      categoryPerLevelSubsets[subset].removeFromParent();
+    }
+    scene.add(subsetOfModel);
+    togglePickable(subsetOfModel, true);*/
+    timeContainer.style.zIndex=0;
+    removeAllChildren(timeContainer);
+    timeButton.classList.remove("active-button");
+  }
+};
+
+
 
 planFloorButton.onclick = () => {
   planFloorActive = !planFloorActive;
@@ -547,7 +574,7 @@ function createPropertiesMenu(properties, saceemProperties, container) {
       if (Number.isNaN(parseFloat(propValue))) {
         propValue;
       } else {
-        if(propKey==="SC_FECHA DE LLENADO" || propKey==="SC_LOTE HORMIGON"){
+        if(propKey==="SC_FECHA DE LLENADO" || propKey==="SC_LOTE HORMIGON" || propKey==="SC_FECHA DE MONTAJE" || propKey==="SC_TEN_FECHA DE TENSADO" || propKey==="SC_TEN_FECHA DE CORTE" || propKey==="SC_FECHA LLEGADA OBRA"){
           const year = propValue.substring(2,-1);
           const month = propValue.substring(2,4);
           const day = propValue.substring(4);
@@ -590,9 +617,9 @@ function createPropertyEntry(key, value, container) {
   container.appendChild(propContainer);
 }
 
-function checkBoxMainStructure(mainContainer){
+function checkBoxMainStructure(mainContainer,title){
   const listHeader = document.createElement("div");
-  listHeader.textContent = "Distribución Espacial";
+  listHeader.textContent = title;
   listHeader.classList.add("categories-header");
   mainContainer.appendChild(listHeader);
   const subContainer = document.createElement("div");
@@ -602,7 +629,7 @@ function checkBoxMainStructure(mainContainer){
 }
 
 async function createCheckBoxStructure() {
-  const categoriesContainer = checkBoxMainStructure(checkboxesOfType);
+  const categoriesContainer = checkBoxMainStructure(checkboxesOfType,"Categorías IFC");
   for (let cat in ifcTypes) {
     const categoryElements = createCheckBox(ifcTypes[cat],"ifcType");
     categoryElements[0].prepend(categoryElements[1]);
@@ -715,6 +742,19 @@ function getAllSaceemConcreteDates(parametersList){
   }
 }
 
+function getAllSaceemQuantities(parametersList){
+  return parametersList.filter(item => item.Name === "SC_VOLUMEN");
+}
+
+function getAllSaceemAssemblyDates(parametersList){
+  return parametersList.filter(item => item.Name === "SC_FECHA DE MONTAJE");
+}
+
+function getAllSaceemProcedences(parametersList){
+  const presacState = "Prefabricado Planta";
+  return parametersList.filter(item => item.Name === "SC_PROCEDENCIA");
+}
+
 function getAllSaceemTypes(parametersList){
   return parametersList.filter(item => item.Name === "SC_TIPO.PIEZA");
 }
@@ -776,7 +816,7 @@ function togglePickable(mesh, isPeackable) {
 }
 
 async function createComplexCheckBoxStructure(mainContainer) {
-  const levelContainer = checkBoxMainStructure(mainContainer);
+  const levelContainer = checkBoxMainStructure(mainContainer,"Distribución Espacial");
   const allLevels = getAllLevels();
   subsetOfModel.removeFromParent();
   togglePickable(subsetOfModel, false);
@@ -791,8 +831,6 @@ async function createComplexCheckBoxStructure(mainContainer) {
     setupLevelCheckBox(level);
   }
 }
-
-
 
 function getAllLevels(){
   let levels = [];
@@ -906,16 +944,88 @@ function setupComplexCheckBox(level,category,container){
   })
 }
 
-/*
-function getAllTypes(){
-  const typeRelations = getAllTypeRelations(propertyValues);
-  let types = [];
-  for (let rel of typeRelations){
-    types.push(propertyValues.filter(item => item.expressID === rel.RelatingType)[0]);
+function createTimeCheckBoxStructure(mainContainer) {
+  const levelContainer = checkBoxMainStructure(mainContainer,"Secuencia constructiva");
+  const allDates = timeSecuence();
+  
+  const allDatesYears =  allDates.map(item => {
+    return item.substring(2,-1)
+  });
+  const allYears = Array.from(new Set(allDatesYears));
+ 
+  const Allmonths = [];
+
+  for (let year of allYears) {
+    const volumn = volumnsInAYear(year);
+    const yearElement = createCheckBox(`20${year} - ${volumn}m3`, "ifcDate");
+    yearElement[1].setAttribute("id", `Year_20${year}`);
+    yearElement[0].prepend(yearElement[1]);
+    levelContainer.appendChild(yearElement[0]);
   }
-  return types;
+  const allDatesInfo = [];
+  for (let date of allDates){
+    const year = date.substring(2,-1);
+    const month = date.substring(2,4);
+    const day = date.substring(4).substring(2,-1);
+    const dateObject = {
+      date,
+      year,
+      month,
+      day
+    }
+    allDatesInfo.push(dateObject);
+  }
+
+  /*subsetOfModel.removeFromParent();
+  togglePickable(subsetOfModel, false);*/
 }
 
-function getAllTypeRelations(properties){
-  return properties.filter(item => item.type === "IFCRELDEFINESBYTYPE")
-}*/
+function timeSecuence() {
+  const datesArray = [];
+  for (let concreteDate of saceemConcreteDates){
+    datesArray.push(concreteDate.NominalValue)
+  }
+  for (let assemblyDate of saceemAssembyDates){
+    datesArray.push(assemblyDate.NominalValue)
+  }
+  const datesUnique = Array.from(new Set(datesArray));
+  datesUnique.sort((a,b)=>{
+    if (a < b) {
+      return 1;
+    }
+    if (a > b) {
+      return -1;
+    }
+    return 0;
+  });
+  return datesUnique;
+
+}
+
+function volumnsInAYear(year){
+  let totalVolumn=[];
+  for (let vol of saceemVolumns){
+    const idRelated = vol.RelatedObjects[0];
+    const procedence = presacStatus.map(item =>{
+      if (item.RelatedObjects.includes(idRelated)){
+        return item.NominalValue;
+      }
+    }).filter(item => item !== undefined)[0];
+    if (procedence!=="Prefabricado Planta"){
+      const date = saceemConcreteDates.map(item =>{
+        if (item.RelatedObjects[0]===idRelated){
+          return item.NominalValue;
+        }
+      }).filter(item => item !== undefined)[0];
+      if (date){
+        const idYear = date.substring(2,-1);
+        if (idYear===year){
+          totalVolumn.push(vol.NominalValue);
+        }
+      }
+    }
+  }
+  return totalVolumn.reduce((a,b)=>{
+    return a+b;
+  }).toFixed(0);
+}
