@@ -947,21 +947,62 @@ function setupComplexCheckBox(level,category,container){
 function createTimeCheckBoxStructure(mainContainer) {
   const levelContainer = checkBoxMainStructure(mainContainer,"Secuencia constructiva");
   const allDates = timeSecuence();
-  
+
   const allDatesYears =  allDates.map(item => {
     return item.substring(2,-1)
   });
   const allYears = Array.from(new Set(allDatesYears));
  
-  const Allmonths = [];
-
   for (let year of allYears) {
-    const volumn = volumnsInAYear(year);
-    const yearElement = createCheckBox(`20${year} - ${volumn}m3`, "ifcDate");
-    yearElement[1].setAttribute("id", `Year_20${year}`);
+    const volumnInAYear = volumnsInAPeriod(1,year);
+    const yearElement = createCheckBox(`Año 20${year} - ${volumnInAYear}m`, "ifcDate");
+    const cubicMetersY = document.createElement("sup");
+    cubicMetersY.textContent="3";
+    yearElement[1].setAttribute("id", `YY${year}`);
     yearElement[0].prepend(yearElement[1]);
+    yearElement[0].append(cubicMetersY);
     levelContainer.appendChild(yearElement[0]);
+    const allMonths = allDates.map(item => {
+      if (item.substring(2,-1)===year){
+        return item.substring(2,4);
+      }
+    }).filter(item => item !== undefined);
+    const allMonthsInYear = Array.from(new Set(allMonths));
+    for (let month of allMonthsInYear){
+      const volumnInAMonth = volumnsInAPeriod(2,year,month);
+      const monthElement = createCheckBox(`Mes ${month} - ${volumnInAMonth}m`, "ifcDate");
+      const cubicMetersM = document.createElement("sup");
+      cubicMetersM.textContent="3";
+      monthElement[1].setAttribute("id", `YY${year}_MM${month}`);
+      monthElement[0].prepend(monthElement[1]);
+      monthElement[0].append(cubicMetersM);
+      monthElement[0].classList.add("checkboxes-children");
+      levelContainer.appendChild(monthElement[0]);
+      const allDays = allDates.map(item => {
+        if (item.substring(4,-1)===`${year}${month}`){
+          return item.substring(4).substring(2,-1);
+        }
+      }).filter(item => item !== undefined);
+      for (let day of allDays){
+        const volumnInADay = volumnsInAPeriod(3,year,month,day);
+        const dayElement = createCheckBox(`Día ${day} - ${volumnInADay}m`, "ifcDate");
+        const cubicMetersD = document.createElement("sup");
+        cubicMetersD.textContent="3";
+        dayElement[1].setAttribute("id", `YY${year}_MM${month}_DD${day}`);
+        dayElement[0].prepend(dayElement[1]);
+        dayElement[0].append(cubicMetersD);
+        dayElement[0].classList.add("checkboxes-children-LII");
+        levelContainer.appendChild(dayElement[0]);
+      }
+      //setupMonthCheckBox(year,month);
+      setupDateCheckBox(2,year,month);
+    }
+    //setupYearCheckBox(year);
+    setupDateCheckBox(1,year);
   }
+
+  
+  /*
   const allDatesInfo = [];
   for (let date of allDates){
     const year = date.substring(2,-1);
@@ -976,7 +1017,7 @@ function createTimeCheckBoxStructure(mainContainer) {
     allDatesInfo.push(dateObject);
   }
 
-  /*subsetOfModel.removeFromParent();
+  subsetOfModel.removeFromParent();
   togglePickable(subsetOfModel, false);*/
 }
 
@@ -1002,7 +1043,7 @@ function timeSecuence() {
 
 }
 
-function volumnsInAYear(year){
+function volumnsInAPeriod(level,year,month,day){
   let totalVolumn=[];
   for (let vol of saceemVolumns){
     const idRelated = vol.RelatedObjects[0];
@@ -1017,15 +1058,104 @@ function volumnsInAYear(year){
           return item.NominalValue;
         }
       }).filter(item => item !== undefined)[0];
+      let idDate;
       if (date){
-        const idYear = date.substring(2,-1);
-        if (idYear===year){
-          totalVolumn.push(vol.NominalValue);
+        if (level===1){
+          idDate = date.substring(2,-1);
+          if (idDate===year){
+            totalVolumn.push(vol.NominalValue);
+          }
+        }
+        if (level===2){
+          idDate = date.substring(4,-1);
+          if (idDate===`${year}${month}`){
+            totalVolumn.push(vol.NominalValue);
+          }
+        }
+        if (level===3){
+          idDate = date.substring(6,-1);
+          if (idDate===`${year}${month}${day}`){
+            totalVolumn.push(vol.NominalValue);
+          }
         }
       }
     }
   }
-  return totalVolumn.reduce((a,b)=>{
-    return a+b;
-  }).toFixed(0);
+  if(totalVolumn.length>0){
+    return totalVolumn.reduce((a,b)=>{
+      return a+b;
+    }).toFixed(0);
+  }else{
+    return 0;
+  }
+}
+
+/*
+function setupYearCheckBox(year){
+  const inputOrder = "0";
+  const checkboxYear = document.getElementById(`YY${year}`);
+  const checkboxesChildren = document.querySelectorAll(".checkboxes-children , .checkboxes-children-LII");
+  checkboxYear.addEventListener("change",(e)=>{
+    const checked = e.target.checked;
+    for (let childNode of checkboxesChildren){      
+      const inputType = childNode.childNodes[inputOrder];
+      const inputTypeId = inputType.id;
+      if (inputTypeId.includes(`YY${year}`)){
+        if (checked){
+          inputType.checked = true;
+        }else{
+          inputType.checked = false;
+        }
+      }
+    }
+  });
+}
+
+function setupMonthCheckBox(year,month){
+  const inputOrder = "0";
+  const checkboxMonth = document.getElementById(`YY${year}_MM${month}`);
+  const checkboxesChildren = document.querySelectorAll(".checkboxes-children-LII");
+  checkboxMonth.addEventListener("change",(e)=>{
+    const checked = e.target.checked;
+    for (let childNode of checkboxesChildren){      
+      const inputType = childNode.childNodes[inputOrder];
+      const inputTypeId = inputType.id;
+      if (inputTypeId.includes(`YY${year}_MM${month}`)){
+        if (checked){
+          inputType.checked = true;
+        }else{
+          inputType.checked = false;
+        }
+      }
+    }
+  });
+}*/
+
+function setupDateCheckBox(level,year,month){
+  const inputOrder = "0";
+  let idTracker;
+  let checkboxesChildren;
+  if (level===1){
+    idTracker = `YY${year}`;
+    checkboxesChildren = document.querySelectorAll(".checkboxes-children , .checkboxes-children-LII");
+  }
+  if (level === 2){
+    idTracker = `YY${year}_MM${month}`;
+    checkboxesChildren = document.querySelectorAll(".checkboxes-children-LII");
+  }
+  const checkboxTracker = document.getElementById(idTracker);
+  checkboxTracker.addEventListener("change",(e)=>{
+    const checked = e.target.checked;
+    for (let childNode of checkboxesChildren){      
+      const inputType = childNode.childNodes[inputOrder];
+      const inputTypeId = inputType.id;
+      if (inputTypeId.includes(idTracker)){
+        if (checked){
+          inputType.checked = true;
+        }else{
+          inputType.checked = false;
+        }
+      }
+    }
+  });
 }
