@@ -47,6 +47,7 @@ const psets = getAllPsets();
 const treeStructure = await viewer.IFC.getSpatialStructure(model.modelID);
 const categorySubsets={};
 const categoryPerLevelSubsets={};
+const dateSubsets={};
 const ifcTypes = returnTypesOfElements();
 
 //PROPIEDADES SACEEM
@@ -144,13 +145,12 @@ timeButton.onclick = () => {
     timeButton.classList.add("active-button");
     createTimeCheckBoxStructure(timeContainer);
     timeContainer.style.zIndex=2;
-    //await createComplexCheckBoxStructure(complexCheckboxes);
   } else {
-    /*for(let subset in categoryPerLevelSubsets){
-      categoryPerLevelSubsets[subset].removeFromParent();
+    for(let subset in dateSubsets){
+      dateSubsets[subset].removeFromParent();
     }
     scene.add(subsetOfModel);
-    togglePickable(subsetOfModel, true);*/
+    togglePickable(subsetOfModel, true);
     timeContainer.style.zIndex=0;
     removeAllChildren(timeContainer);
     timeButton.classList.remove("active-button");
@@ -945,14 +945,14 @@ function setupComplexCheckBox(level,category,container){
 }
 
 function createTimeCheckBoxStructure(mainContainer) {
+  subsetOfModel.removeFromParent();
+  togglePickable(subsetOfModel, false);
   const levelContainer = checkBoxMainStructure(mainContainer,"Secuencia constructiva");
   const allDates = timeSecuence();
-
   const allDatesYears =  allDates.map(item => {
     return item.substring(2,-1)
   });
   const allYears = Array.from(new Set(allDatesYears));
- 
   for (let year of allYears) {
     const volumnInAYear = volumnsInAPeriod(1,year);
     const yearElement = createCheckBox(`Año 20${year} - ${volumnInAYear}m`, "ifcDate");
@@ -984,41 +984,14 @@ function createTimeCheckBoxStructure(mainContainer) {
         }
       }).filter(item => item !== undefined);
       for (let day of allDays){
-        const volumnInADay = volumnsInAPeriod(3,year,month,day);
-        const dayElement = createCheckBox(`Día ${day} - ${volumnInADay}m`, "ifcDate");
-        const cubicMetersD = document.createElement("sup");
-        cubicMetersD.textContent="3";
-        dayElement[1].setAttribute("id", `YY${year}_MM${month}_DD${day}`);
-        dayElement[0].prepend(dayElement[1]);
-        dayElement[0].append(cubicMetersD);
-        dayElement[0].classList.add("checkboxes-children-LII");
-        levelContainer.appendChild(dayElement[0]);
+        setupDateCheckBox(year,month,day,levelContainer);
       }
       //setupMonthCheckBox(year,month);
-      setupDateCheckBox(2,year,month);
+      setupPeriodCheckBox(2,year,month);
     }
     //setupYearCheckBox(year);
-    setupDateCheckBox(1,year);
+    setupPeriodCheckBox(1,year);
   }
-
-  
-  /*
-  const allDatesInfo = [];
-  for (let date of allDates){
-    const year = date.substring(2,-1);
-    const month = date.substring(2,4);
-    const day = date.substring(4).substring(2,-1);
-    const dateObject = {
-      date,
-      year,
-      month,
-      day
-    }
-    allDatesInfo.push(dateObject);
-  }
-
-  subsetOfModel.removeFromParent();
-  togglePickable(subsetOfModel, false);*/
 }
 
 function timeSecuence() {
@@ -1090,6 +1063,92 @@ function volumnsInAPeriod(level,year,month,day){
   }
 }
 
+function setupPeriodCheckBox(level,year,month){
+  const inputOrder = "0";
+  let idTracker;
+  let checkboxesChildren;
+  if (level===1){
+    idTracker = `YY${year}`;
+    checkboxesChildren = document.querySelectorAll(".checkboxes-children , .checkboxes-children-LII");
+  }
+  if (level === 2){
+    idTracker = `YY${year}_MM${month}`;
+    checkboxesChildren = document.querySelectorAll(".checkboxes-children-LII");
+  }
+  const checkboxTracker = document.getElementById(idTracker);
+  checkboxTracker.addEventListener("change",(e)=>{
+    const checked = e.target.checked;
+    for (let childNode of checkboxesChildren){      
+      const inputType = childNode.childNodes[inputOrder];
+      const inputTypeId = inputType.id;
+      if (inputTypeId.includes(idTracker)){
+        if (checked){
+          inputType.checked = true;
+        }else{
+          inputType.checked = false;
+        }
+      }
+    }
+  });
+}
+
+function setupDateCheckBox(year,month,day,container){
+  dateSubsets[`YY${year}_MM${month}_DD${day}`] = newSubsetOfDate(year,month,day);
+  togglePickable(dateSubsets[`YY${year}_MM${month}_DD${day}`], true);
+  setupDaysCheckBox(year,month,day,container);
+}
+
+function setupDaysCheckBox(year, month, day, container) {
+  const volumnInADay = volumnsInAPeriod(3, year, month, day);
+  const dayElement = createCheckBox(`Día ${day} - ${volumnInADay}m`, "ifcDate");
+  const cubicMetersD = document.createElement("sup");
+  cubicMetersD.textContent = "3";
+  dayElement[1].setAttribute("id", `YY${year}_MM${month}_DD${day}`);
+  dayElement[0].prepend(dayElement[1]);
+  dayElement[0].append(cubicMetersD);
+  dayElement[0].classList.add("checkboxes-children-LII");
+  container.appendChild(dayElement[0]);
+  dayElement[0].addEventListener("change", (e) => {
+    const checked = e.target.checked;
+    const subset = dateSubsets[`YY${year}_MM${month}_DD${day}`];
+    if (checked) {
+      scene.add(subset);
+      togglePickable(subset, true);
+    } else {
+      subset.removeFromParent();
+      togglePickable(subset, false);
+    }
+  });
+}
+
+function newSubsetOfDate(year,month,day){
+  const dateId = `${year}${month}${day}`;
+  const ids = [];
+  const idConcrete = saceemConcreteDates.flatMap(item =>{
+    if (item.NominalValue.substring(6,-1) === dateId){
+      return item.RelatedObjects;
+    }
+  }).filter(item => item !== undefined);
+  const idAssembly = saceemAssembyDates.flatMap(item =>{
+    if (item.NominalValue.substring(6,-1) === dateId){
+      return item.RelatedObjects;
+    }
+  }).filter(item => item !== undefined);
+  ids.push(idConcrete);
+  ids.push(idAssembly);
+  const idsFlat = ids.flat(2);
+  
+  if (idsFlat.length) {
+    return viewer.IFC.loader.ifcManager.createSubset({
+      modelID: model.modelID,
+      scene,
+      ids: idsFlat,
+      removePrevious: true,
+      customID: `YY${year}_MM${month}_DD${day}`,
+    });
+  }
+}
+
 /*
 function setupYearCheckBox(year){
   const inputOrder = "0";
@@ -1131,31 +1190,20 @@ function setupMonthCheckBox(year,month){
   });
 }*/
 
-function setupDateCheckBox(level,year,month){
-  const inputOrder = "0";
-  let idTracker;
-  let checkboxesChildren;
-  if (level===1){
-    idTracker = `YY${year}`;
-    checkboxesChildren = document.querySelectorAll(".checkboxes-children , .checkboxes-children-LII");
-  }
-  if (level === 2){
-    idTracker = `YY${year}_MM${month}`;
-    checkboxesChildren = document.querySelectorAll(".checkboxes-children-LII");
-  }
-  const checkboxTracker = document.getElementById(idTracker);
-  checkboxTracker.addEventListener("change",(e)=>{
-    const checked = e.target.checked;
-    for (let childNode of checkboxesChildren){      
-      const inputType = childNode.childNodes[inputOrder];
-      const inputTypeId = inputType.id;
-      if (inputTypeId.includes(idTracker)){
-        if (checked){
-          inputType.checked = true;
-        }else{
-          inputType.checked = false;
-        }
-      }
+  /*
+  const allDatesInfo = [];
+  for (let date of allDates){
+    const year = date.substring(2,-1);
+    const month = date.substring(2,4);
+    const day = date.substring(4).substring(2,-1);
+    const dateObject = {
+      date,
+      year,
+      month,
+      day
     }
-  });
-}
+    allDatesInfo.push(dateObject);
+  }
+
+  subsetOfModel.removeFromParent();
+  togglePickable(subsetOfModel, false);*/
