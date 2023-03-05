@@ -21,6 +21,7 @@ const planFloorButton = document.getElementById("plan-floor-button");
 const treeButton = document.getElementById("tree-button");
 const spatialButton = document.getElementById("visibility-complex-button");
 const timeButton = document.getElementById("crono-button");
+const dimButton = document.getElementById("measure-button");
 const treeContainer = document.getElementById("tree-container");
 const visionButton = document.getElementById("visibility-button");
 const checkboxesOfType = document.getElementById("checkbox-category");
@@ -69,6 +70,7 @@ let treeActive = false;
 let specialVisionActive = false;
 let spatialVisionActive = false;
 let timeVisionActive = false;
+let dimActive = false;
 
 exitButton.onclick = () => {
   virtualLink("./index.html");
@@ -156,6 +158,28 @@ timeButton.onclick = () => {
     timeContainer.style.zIndex=0;
     removeAllChildren(timeContainer);
     timeButton.classList.remove("active-button");
+  }
+};
+
+dimButton.onclick = () => {
+  dimActive = !dimActive;
+  if (dimActive) {
+    dimButton.classList.add("active-button");
+    activeDimensions(true);
+    window.ondblclick = () =>{
+      viewer.dimensions.create();
+    }
+
+    window.onkeydown = (event) => {
+      if(event.code==="Escape"){
+        viewer.dimensions.delete();
+      }
+    }
+    
+  } else {
+    dimButton.classList.remove("active-button");
+    viewer.dimensions.delete();
+    activeDimensions(false);
   }
 };
 
@@ -332,6 +356,11 @@ async function postprocessingPorperties(){
 async function loadProperties(){
   const rawProperties = await fetch(`./resources/json/properties_${modelName}.json`);
   modelProperties = await rawProperties.json();
+}
+
+function activeDimensions(set){
+  viewer.dimensions.active = set;
+  viewer.dimensions.previewActive = set;
 }
 
 function loadPropertiesValues(properties){
