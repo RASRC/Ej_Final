@@ -1020,11 +1020,7 @@ function volumnsInAPeriod(level,year,month,day){
   let totalVolumn=[];
   for (let vol of saceemVolumns){
     const idRelated = vol.RelatedObjects[0];
-    const procedence = presacStatus.map(item =>{
-      if (item.RelatedObjects.includes(idRelated)){
-        return item.NominalValue;
-      }
-    }).filter(item => item !== undefined)[0];
+    const procedence = elementProcedence(idRelated);
     if (procedence!=="Prefabricado Planta"){
       const date = saceemConcreteDates.map(item =>{
         if (item.RelatedObjects[0]===idRelated){
@@ -1081,11 +1077,20 @@ function setupPeriodCheckBox(level,year,month){
     for (let childNode of checkboxesChildren){      
       const inputType = childNode.childNodes[inputOrder];
       const inputTypeId = inputType.id;
+      const subset = dateSubsets[inputTypeId];
       if (inputTypeId.includes(idTracker)){
         if (checked){
           inputType.checked = true;
+          if (subset){
+            scene.add(subset);
+            togglePickable(subset, true);
+          }
         }else{
           inputType.checked = false;
+          if (subset){
+            subset.removeFromParent();
+            togglePickable(subset, false);
+          }
         }
       }
     }
@@ -1094,7 +1099,9 @@ function setupPeriodCheckBox(level,year,month){
 
 function setupDateCheckBox(year,month,day,container){
   dateSubsets[`YY${year}_MM${month}_DD${day}`] = newSubsetOfDate(year,month,day);
-  togglePickable(dateSubsets[`YY${year}_MM${month}_DD${day}`], true);
+  if(dateSubsets[`YY${year}_MM${month}_DD${day}`]){
+    togglePickable(dateSubsets[`YY${year}_MM${month}_DD${day}`], true);
+  };
   setupDaysCheckBox(year,month,day,container);
 }
 
@@ -1111,12 +1118,14 @@ function setupDaysCheckBox(year, month, day, container) {
   dayElement[0].addEventListener("change", (e) => {
     const checked = e.target.checked;
     const subset = dateSubsets[`YY${year}_MM${month}_DD${day}`];
-    if (checked) {
-      scene.add(subset);
-      togglePickable(subset, true);
-    } else {
-      subset.removeFromParent();
-      togglePickable(subset, false);
+    if (subset) {
+      if (checked) {
+        scene.add(subset);
+        togglePickable(subset, true);
+      } else {
+        subset.removeFromParent();
+        togglePickable(subset, false);
+      }
     }
   });
 }
@@ -1128,12 +1137,15 @@ function newSubsetOfDate(year,month,day){
     if (item.NominalValue.substring(6,-1) === dateId){
       return item.RelatedObjects;
     }
-  }).filter(item => item !== undefined);
+  }).filter(item => item !== undefined)
+  .filter(item => {return elementProcedence(item).indexOf("Prefabricado")===-1});
+
   const idAssembly = saceemAssembyDates.flatMap(item =>{
     if (item.NominalValue.substring(6,-1) === dateId){
       return item.RelatedObjects;
     }
-  }).filter(item => item !== undefined);
+  }).filter(item => item !== undefined)
+  .filter(item => {return elementProcedence(item).indexOf("Prefabricado")!==-1});
   ids.push(idConcrete);
   ids.push(idAssembly);
   const idsFlat = ids.flat(2);
@@ -1147,6 +1159,14 @@ function newSubsetOfDate(year,month,day){
       customID: `YY${year}_MM${month}_DD${day}`,
     });
   }
+}
+
+function elementProcedence(id){
+  return presacStatus.map(item =>{
+    if (item.RelatedObjects.includes(id)){
+      return item.NominalValue;
+    }
+  }).filter(item => item !== undefined)[0];
 }
 
 /*
@@ -1207,3 +1227,5 @@ function setupMonthCheckBox(year,month){
 
   subsetOfModel.removeFromParent();
   togglePickable(subsetOfModel, false);*/
+
+  
