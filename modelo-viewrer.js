@@ -147,7 +147,9 @@ timeButton.onclick = () => {
     timeContainer.style.zIndex=2;
   } else {
     for(let subset in dateSubsets){
-      dateSubsets[subset].removeFromParent();
+      if (dateSubsets[subset]){
+        dateSubsets[subset].removeFromParent();
+      }
     }
     scene.add(subsetOfModel);
     togglePickable(subsetOfModel, true);
