@@ -867,22 +867,17 @@ function setupLevelCheckBox(level){
   const checkboxesChildren = document.querySelectorAll(".checkboxes-children");
   checkboxLevel.addEventListener("change",(e)=>{
     const checked = e.target.checked;
-    if (checked){
-      for (let childNode of checkboxesChildren){      
-        const inputType = childNode.childNodes[inputOrder];
-        const inputTypeId = inputType.id;
-        const subset = categoryPerLevelSubsets[inputTypeId];
+    for (let childNode of checkboxesChildren){      
+      const inputType = childNode.childNodes[inputOrder];
+      const inputTypeId = inputType.id;
+      const subset = categoryPerLevelSubsets[inputTypeId];
+      if (checked){
         if (inputTypeId.includes(name)){
           inputType.checked = true;
           scene.add(subset);
           togglePickable(subset, true);
         }
-      }
-    }else{
-      for (let childNode of checkboxesChildren){
-        const inputType = childNode.childNodes[inputOrder];
-        const inputTypeId = inputType.id;
-        const subset = categoryPerLevelSubsets[inputTypeId];
+      }else{
         if (inputTypeId.includes(name)){
           inputType.checked = false;
           subset.removeFromParent();
@@ -1168,64 +1163,3 @@ function elementProcedence(id){
     }
   }).filter(item => item !== undefined)[0];
 }
-
-/*
-function setupYearCheckBox(year){
-  const inputOrder = "0";
-  const checkboxYear = document.getElementById(`YY${year}`);
-  const checkboxesChildren = document.querySelectorAll(".checkboxes-children , .checkboxes-children-LII");
-  checkboxYear.addEventListener("change",(e)=>{
-    const checked = e.target.checked;
-    for (let childNode of checkboxesChildren){      
-      const inputType = childNode.childNodes[inputOrder];
-      const inputTypeId = inputType.id;
-      if (inputTypeId.includes(`YY${year}`)){
-        if (checked){
-          inputType.checked = true;
-        }else{
-          inputType.checked = false;
-        }
-      }
-    }
-  });
-}
-
-function setupMonthCheckBox(year,month){
-  const inputOrder = "0";
-  const checkboxMonth = document.getElementById(`YY${year}_MM${month}`);
-  const checkboxesChildren = document.querySelectorAll(".checkboxes-children-LII");
-  checkboxMonth.addEventListener("change",(e)=>{
-    const checked = e.target.checked;
-    for (let childNode of checkboxesChildren){      
-      const inputType = childNode.childNodes[inputOrder];
-      const inputTypeId = inputType.id;
-      if (inputTypeId.includes(`YY${year}_MM${month}`)){
-        if (checked){
-          inputType.checked = true;
-        }else{
-          inputType.checked = false;
-        }
-      }
-    }
-  });
-}*/
-
-  /*
-  const allDatesInfo = [];
-  for (let date of allDates){
-    const year = date.substring(2,-1);
-    const month = date.substring(2,4);
-    const day = date.substring(4).substring(2,-1);
-    const dateObject = {
-      date,
-      year,
-      month,
-      day
-    }
-    allDatesInfo.push(dateObject);
-  }
-
-  subsetOfModel.removeFromParent();
-  togglePickable(subsetOfModel, false);*/
-
-  
