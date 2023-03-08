@@ -362,3 +362,107 @@ input:checked{
     padding: 4px;
     border-radius: 4px;
 }
+
+.calculator-structure {
+    border: 1px solid black;
+    background-color: rgba(255, 255, 255, 0.5);
+}
+
+#volum-table {
+    border-collapse: collapse;
+    width: 40vh;
+}
+
+#volum-table td, #volum-table th {
+    border: 1px solid #000000;
+    padding: 8px;
+    text-align: center;
+    width: 50%;
+}
+
+#volum-table tr:nth-child(even){background-color: #f2f2f2;}
+
+#volum-table tr:hover {background-color: #ddd;}
+
+#volum-table th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+    background-color:  rgb(255, 217, 0);
+    font-weight: normal;
+}
+
+#volum-table-subheader{
+    background-color:  rgb(255, 217, 0);
+}
+
+tfoot {
+    font-weight: bold;
+    background-color: rgb(164, 232, 240);
+}
+
+#progress-container {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    left: 0;
+    margin:1rem;
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
+#progress-container a{
+    padding-right: 0.3rem;
+    font-size: 1.3rem;
+}
+
+/* Animación hamster. Fuente: https://uiverse.io/Ali-Tahmazi99/breezy-squid-90 */
+
+.loader {
+    width: 65px;
+    height: 65px;
+    border: 8px solid #ee9b00a6;
+    border-radius: 50px;
+    position: relative;
+    margin-left: 1rem;
+   }
+   
+   .loader span {
+    display: block;
+    background: #ee9b00;
+   }
+   
+   .loader .hour ,
+   .loader .min {
+    width: 6px;
+    height: 22px;
+    border-radius: 50px;
+    position: absolute;
+    top: 24.5px;
+    left: 21px;
+    animation: load9243 1.2s linear infinite;
+    transform-origin: top center;
+   }
+   
+   .loader .min {
+    height: 17px;
+    animation: load9243 4s linear infinite;
+   }
+   
+   .loader .circel {
+    width: 10px;
+    height: 10px;
+    border-radius: 50px;
+    position: absolute;
+    top: 19px;
+    left: 19px;
+   }
+   
+   @keyframes load9243 {
+    0% {
+     transform: rotate(0deg);
+    }
+   
+    100% {
+     transform: rotate(360deg);
+    }
+   }

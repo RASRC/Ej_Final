@@ -5,14 +5,26 @@ import { ifcTraducidoEsp } from "./ifcTranslate";
 
 //ELEMENTOS HTML
 const pageTitle = document.querySelector("title");
-const container = document.getElementById("viewrer-container");
 const projectName = document.getElementById("nombreModelo");
+
+//MENU BOTON DERECHO
 const contextMenu = document.querySelector(".wrapper");
 const shareMenu = contextMenu.querySelector(".annotation-menu");
+
+//CONTENEDORES DE INFORMACION
+const progressContainer = document.getElementById("progress-container");
+const container = document.getElementById("viewrer-container");
 const menuHtml = document.getElementById("ifc-property-menu");
 const propMenu = document.createElement("div");
 const propContent = document.createElement("div");
 const floorContainer = document.getElementById("floor-container");
+const treeContainer = document.getElementById("tree-container");
+const checkboxesOfType = document.getElementById("checkbox-category");
+const complexCheckboxes = document.getElementById("checkbox-category-levels");
+const timeContainer = document.getElementById("checkbox-time");
+const calculatorContainer = document.getElementById("volum-calculator");
+
+//BOTONES
 const exitButton = document.getElementById("exit-button");
 const selectButton = document.getElementById("select-button");
 const clippingButton = document.getElementById("clipping-button");
@@ -22,15 +34,14 @@ const treeButton = document.getElementById("tree-button");
 const spatialButton = document.getElementById("visibility-complex-button");
 const timeButton = document.getElementById("crono-button");
 const dimButton = document.getElementById("measure-button");
-const treeContainer = document.getElementById("tree-container");
+const calcVolumButton = document.getElementById("calculator-button");
 const visionButton = document.getElementById("visibility-button");
-const checkboxesOfType = document.getElementById("checkbox-category");
-const complexCheckboxes = document.getElementById("checkbox-category-levels");
-const timeContainer = document.getElementById("checkbox-time");
+const excelButton = document.getElementById("excel-button");
 
 //CONFIGURACION DE LA ESCENA Y SUS ELEMENTOS
 const viewer = await setupScene();
 setupMultiThreading();
+setupProgressNotification();
 const scene = viewer.context.getScene();
 
 //CARGA DEL MODELO
@@ -71,6 +82,9 @@ let specialVisionActive = false;
 let spatialVisionActive = false;
 let timeVisionActive = false;
 let dimActive = false;
+let calcActive = false;
+let calcGroup = [];
+let totalVolum
 
 exitButton.onclick = () => {
   virtualLink("./index.html");
@@ -87,6 +101,25 @@ selectButton.onclick = () => {
     removeAllChildren(menuHtml);
     menuHtml.classList.remove("ifc-property-menu");
     viewer.IFC.selector.unpickIfcItems();
+  }
+};
+
+calcVolumButton.onclick = () => {
+  calcActive = !calcActive;
+  if (calcActive) {
+    calcVolumButton.classList.add("active-button");
+    createCalculatorStructure(calculatorContainer);
+    calculatorContainer.style.zIndex=2;
+    excelButton.style.display = "initial";
+
+  } else {
+    calcVolumButton.classList.remove("active-button");
+    calculatorContainer.style.zIndex=0;
+    removeAllChildren(calculatorContainer);
+    calcGroup = [];
+    totalVolum = 0;
+    excelButton.style.display = "none";
+
   }
 };
 
@@ -165,25 +198,13 @@ dimButton.onclick = () => {
   dimActive = !dimActive;
   if (dimActive) {
     dimButton.classList.add("active-button");
-    activeDimensions(true);
-    window.ondblclick = () =>{
-      viewer.dimensions.create();
-    }
-
-    window.onkeydown = (event) => {
-      if(event.code==="Escape"){
-        viewer.dimensions.delete();
-      }
-    }
-    
+    activeDimensions(true);    
   } else {
     dimButton.classList.remove("active-button");
     viewer.dimensions.delete();
     activeDimensions(false);
   }
 };
-
-
 
 planFloorButton.onclick = () => {
   planFloorActive = !planFloorActive;
@@ -218,6 +239,12 @@ treeButton.onclick = async () => {
   }
 };
 
+excelButton.onclick = () => {
+  const table = document.getElementById("volum-table");
+  const book = XLSX.utils.table_to_book(table);
+  XLSX.writeFile(book, `${modelName}_Volumenes.xlsx`);
+}
+
 //CONFIGURACIÓN EVENTOS
 window.onmousemove = async () => await viewer.IFC.selector.prePickIfcItem();
 
@@ -229,12 +256,26 @@ window.ondblclick = async () => {
   if (clippingPlaneActive) {
     viewer.clipper.createPlane();
   }
+  if (dimActive) {
+      viewer.dimensions.create();
+  }
+  if (calcActive) {
+    const result = await viewer.IFC.selector.pickIfcItem();
+    newValue("volum-table-body",result.id);
+    calcGroup.push(result.id);
+    totalVolum = parseFloat(totalCalculator(calcGroup)).toFixed(2);
+    totalPrint(totalVolum);
+  }
 };
 
 window.onkeydown = (event) => {
   if (event.code === "Delete" && clippingPlaneActive) {
     viewer.clipper.deletePlane();
   }
+  if(event.code==="Escape" &&  dimActive){
+    viewer.dimensions.delete();
+  }
+
 };
 
 //Acciones a tomar al hacer click en boton derecho. Fuente menú contextual: https://www.codingnepalweb.com/right-click-context-menu-html-javascript/
@@ -279,6 +320,10 @@ window.addEventListener("contextmenu", async (e) => {
 document.addEventListener("click", async (e) => {
   //contextMenu.style.visibility = "hidden";
   viewer.IFC.selector.unpickIfcItems();
+
+  if (e.target.getAttribute("id") === null) {
+    contextMenu.style.display = "none";
+  }
 
   if (e.target.getAttribute("id") === "snapshoot-option") {
     contextMenu.style.display = "none";
@@ -342,6 +387,18 @@ async function setupScene() {
 
 async function setupMultiThreading(){
   await viewer.IFC.loader.ifcManager.useWebWorkers(true,"./IFCWorker.js");
+}
+
+function setupProgressNotification() {
+  const text = document.getElementById('progress-text');
+  viewer.IFC.loader.ifcManager.setOnProgress((event) => {
+    const percent = event.loaded / event.total * 100;
+    const result = Math.trunc(percent);
+    text.innerText = result.toString();
+    if(event.loaded===event.total){
+      progressContainer.style.display = "none";
+    }
+  });
 }
 
 async function postprocessingPorperties(){
@@ -1012,10 +1069,8 @@ function createTimeCheckBoxStructure(mainContainer) {
       for (let day of allDays){
         setupDateCheckBox(year,month,day,levelContainer);
       }
-      //setupMonthCheckBox(year,month);
       setupPeriodCheckBox(2,year,month);
     }
-    //setupYearCheckBox(year);
     setupPeriodCheckBox(1,year);
   }
 }
@@ -1187,10 +1242,104 @@ function newSubsetOfDate(year,month,day){
   }
 }
 
+function createCalculatorStructure(mainContainer) {
+  const volumTable = document.createElement("table");
+  volumTable.setAttribute("id","volum-table");
+  mainContainer.appendChild(volumTable);
+
+  const mainTableHeader = document.createElement("tr");
+  volumTable.appendChild(mainTableHeader);
+  const tableHeader = document.createElement("th");
+  tableHeader.textContent="Calculadora de volúmenes"
+  tableHeader.setAttribute("colspan","2");
+  volumTable.appendChild(tableHeader);
+
+  const tableSubHeader = document.createElement("tr");
+  tableSubHeader.setAttribute("id","volum-table-subheader");
+  volumTable.appendChild(tableSubHeader);
+  const subHeaderIdSaceem = document.createElement("td");
+  subHeaderIdSaceem.textContent = "ID";
+  const subHeaderVolum = document.createElement("td");
+  subHeaderVolum.textContent = "Valor (m3)";
+  tableSubHeader.appendChild(subHeaderIdSaceem);
+  tableSubHeader.appendChild(subHeaderVolum)
+
+  const tableBody = document.createElement("tbody");
+  tableBody.setAttribute("id","volum-table-body");
+  volumTable.appendChild(tableBody);
+
+  const totalContainer = document.createElement("tfoot");
+  volumTable.appendChild(totalContainer);
+  const totalRow = document.createElement("tr");
+  totalContainer.appendChild(totalRow);
+  
+  const totalLabel = document.createElement("td");
+  totalLabel.textContent="TOTAL";
+  const totalValue = document.createElement("td");
+  totalValue.textContent="0";
+  totalValue.setAttribute("id","total-volum");
+  totalRow.appendChild(totalLabel);
+  totalRow.appendChild(totalValue);
+
+}
+
+function newValue(idTable,idElement){
+  const tableBody = document.getElementById(idTable);
+  const individualRow = document.createElement("tr");
+  tableBody.appendChild(individualRow);
+
+  const saceemId = document.createElement("td");
+  saceemId.textContent = elementSaceemId(idElement);
+  const saceemVolum = document.createElement("td");
+  saceemVolum.textContent = elementSaceemVolum(idElement);
+  individualRow.appendChild(saceemId);
+  individualRow.appendChild(saceemVolum);
+
+}
+
+function totalCalculator(group){
+  let volums = [];
+  for (let item of group){
+    const indValue = elementSaceemVolum(item);
+    volums.push(parseFloat(indValue));
+  }
+  if(volums.length>0){
+    return volums.reduce((a,b)=>{
+      return a+b;
+    });
+  }else{
+    return 0;
+  }
+  
+}
+
+function totalPrint(totalVolumnValue){
+  const foot = document.getElementById("total-volum");
+  foot.textContent = totalVolumnValue;
+}
+
 function elementProcedence(id){
   return presacStatus.map(item =>{
     if (item.RelatedObjects.includes(id)){
       return item.NominalValue;
     }
   }).filter(item => item !== undefined)[0];
+}
+
+function elementSaceemId(id){
+  return saceemIds.map(item =>{
+    if (item.RelatedObjects.includes(id)){
+      return item.NominalValue;
+    }
+  }).filter(item => item !== undefined)[0];
+}
+
+function elementSaceemVolum(id){
+  const volum = saceemVolumns.map(item =>{
+    if (item.RelatedObjects.includes(id)){
+      return item.NominalValue;
+    }
+  }).filter(item => item !== undefined)[0];
+
+  return parseFloat(volum).toFixed(2);
 }
