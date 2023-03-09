@@ -143,10 +143,15 @@ visionButton.onclick = async () => {
   if (specialVisionActive) {
     visionButton.classList.add("active-button");
     checkboxesOfType.style.zIndex=2;
+    subsetOfModel.removeFromParent();
+    togglePickable(subsetOfModel, false);
     await createCheckBoxStructure();
+    //console.log(viewer.context.items.pickableIfcModels);
+    //console.log(categorySubsets)
   } else {
     for(let subset in categorySubsets){
       categorySubsets[subset].removeFromParent();
+      togglePickable(categorySubsets[subset], false);
     }
     scene.add(subsetOfModel);
     togglePickable(subsetOfModel, true);
@@ -156,15 +161,20 @@ visionButton.onclick = async () => {
   }
 };
 
-spatialButton.onclick = async () => {
+spatialButton.onclick = () => {
   spatialVisionActive = !spatialVisionActive;
   if (spatialVisionActive) {
     spatialButton.classList.add("active-button");
     complexCheckboxes.style.zIndex=2;
-    await createComplexCheckBoxStructure(complexCheckboxes);
+    subsetOfModel.removeFromParent();
+    togglePickable(subsetOfModel, false);
+    createComplexCheckBoxStructure(complexCheckboxes);
+    //console.log(viewer.context.items.pickableIfcModels);
+    //console.log(categoryPerLevelSubsets)
   } else {
     for(let subset in categoryPerLevelSubsets){
       categoryPerLevelSubsets[subset].removeFromParent();
+      togglePickable(categoryPerLevelSubsets[subset], false);
     }
     scene.add(subsetOfModel);
     togglePickable(subsetOfModel, true);
@@ -178,13 +188,19 @@ timeButton.onclick = () => {
   timeVisionActive = !timeVisionActive;
   if (timeVisionActive) {
     timeButton.classList.add("active-button");
-    createTimeCheckBoxStructure(timeContainer);
     timeContainer.style.zIndex=2;
+    subsetOfModel.removeFromParent();
+    togglePickable(subsetOfModel, false);
+    createTimeCheckBoxStructure(timeContainer);
+    //console.log(viewer.context.items.pickableIfcModels);
+    //console.log(dateSubsets);
   } else {
     for(let subset in dateSubsets){
       if (dateSubsets[subset]){
         dateSubsets[subset].removeFromParent();
       }
+      togglePickable(dateSubsets[subset], false);
+      //console.log(viewer.context.items.pickableIfcModels);
     }
     scene.add(subsetOfModel);
     togglePickable(subsetOfModel, true);
@@ -252,6 +268,7 @@ window.ondblclick = async () => {
   if (activeSelection) {
     const result = await viewer.IFC.selector.pickIfcItem(true);
     propertiesPanel(result);
+    console.log(result);
   }
   if (clippingPlaneActive) {
     viewer.clipper.createPlane();
@@ -723,8 +740,6 @@ async function createCheckBoxStructure() {
     categoryElements[0].prepend(categoryElements[1]);
     categoriesContainer.appendChild(categoryElements[0]);
   }
-  subsetOfModel.removeFromParent();
-  togglePickable(subsetOfModel, false);
   await setupAllCategories();
 }
 
@@ -895,26 +910,28 @@ function hideClickedItem(result) {
 
 function togglePickable(mesh, isPeackable) {
   const pickable = viewer.context.items.pickableIfcModels;
+  const isMeshpickable = pickable.includes(mesh);
   if (isPeackable) {
     pickable.push(mesh);
+    /*if (!isMeshpickable){
+      
+    }*/
   } else {
     const index = pickable.indexOf(mesh);
     pickable.splice(index, 1);
   }
 }
 
-async function createComplexCheckBoxStructure(mainContainer) {
+function createComplexCheckBoxStructure(mainContainer) {
   const levelContainer = checkBoxMainStructure(mainContainer,"Distribución Espacial");
   const allLevels = getAllLevels();
-  subsetOfModel.removeFromParent();
-  togglePickable(subsetOfModel, false);
   for (let level of allLevels) {
     const levelElement = createCheckBox(level.Name,"ifcLevel");
     levelElement[0].prepend(levelElement[1]);
     levelContainer.appendChild(levelElement[0]);
     const ifcTypesInLevel = getTypesInLevel(level.expressID);
     for (let ifcType of ifcTypesInLevel){
-      await setupLevelAndCategory(level.Name,ifcType,levelContainer);
+      setupLevelAndCategory(level.Name,ifcType,levelContainer);
     }
     setupLevelCheckBox(level);
   }
@@ -976,13 +993,13 @@ function setupLevelCheckBox(level){
   })
 }
 
-async function setupLevelAndCategory(level,category,container){
-  categoryPerLevelSubsets[`${level}_${category}`] = await newSubsetOfLevelAndType(level,category);
+function setupLevelAndCategory(level,category,container){
+  categoryPerLevelSubsets[`${level}_${category}`] = newSubsetOfLevelAndType(level,category);
   togglePickable(categoryPerLevelSubsets[`${level}_${category}`], true);
   setupComplexCheckBox(level,category,container);
 }
 
-async function newSubsetOfLevelAndType(level,category){
+function newSubsetOfLevelAndType(level,category){
   const spatialRelations = getAllSpatialRelations(propertyValues);
   const ids = [];
   for (let relation of spatialRelations){
@@ -1028,8 +1045,6 @@ function setupComplexCheckBox(level,category,container){
 }
 
 function createTimeCheckBoxStructure(mainContainer) {
-  subsetOfModel.removeFromParent();
-  togglePickable(subsetOfModel, false);
   const levelContainer = checkBoxMainStructure(mainContainer,"Secuencia constructiva");
   const allDates = timeSecuence();
   const allDatesYears =  allDates.map(item => {
