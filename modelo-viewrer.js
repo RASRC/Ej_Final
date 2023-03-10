@@ -113,15 +113,20 @@ searchButton.onclick = async () => {
   if(activeSearching){
     searchButton.classList.add("active-button");
     const searchMessage = window.prompt("Ingresa el ID del elemento:");
+    const itemId = elementIdFromSaceem(searchMessage);
+    const result = {
+      modelID: model.modelID,
+      id: itemId
+    }
     menuHtml.appendChild(propMenu);
     menuHtml.appendChild(propContent);
-    const result = await viewer.IFC.selector.pickIfcItemsByID(model.modelID,[parseInt(searchMessage)],true);
     propertiesPanel(result);
+    await viewer.IFC.selector.highlightIfcItemsByID(model.modelID,[itemId],true);
   }else{
     searchButton.classList.remove("active-button");
     removeAllChildren(menuHtml);
     menuHtml.classList.remove("ifc-property-menu");
-    viewer.IFC.selector.unpickIfcItems();
+    viewer.IFC.selector.unHighlightIfcItems();
   }
 }
 
@@ -1401,6 +1406,14 @@ function elementSaceemId(id){
       return item.NominalValue;
     }
   }).filter(item => item !== undefined)[0];
+}
+
+function elementIdFromSaceem(idSaceem){
+  for (let item of saceemIds){
+    if(item.NominalValue === idSaceem){
+      return item.RelatedObjects[0];
+    }
+  }
 }
 
 function elementSaceemVolum(id){
