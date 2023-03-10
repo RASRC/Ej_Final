@@ -2,6 +2,7 @@ import { Color, LineBasicMaterial, MeshBasicMaterial} from "three";
 import { IfcViewerAPI } from "web-ifc-viewer";
 import { proyectos } from "./proyectos.js";
 import { ifcTraducidoEsp } from "./ifcTranslate";
+import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 
 //ELEMENTOS HTML
 const pageTitle = document.querySelector("title");
@@ -37,12 +38,15 @@ const dimButton = document.getElementById("measure-button");
 const calcVolumButton = document.getElementById("calculator-button");
 const visionButton = document.getElementById("visibility-button");
 const excelButton = document.getElementById("excel-button");
+const searchButton = document.getElementById("search-button");
 
 //CONFIGURACION DE LA ESCENA Y SUS ELEMENTOS
 const viewer = await setupScene();
 setupMultiThreading();
 setupProgressNotification();
 const scene = viewer.context.getScene();
+const camera = viewer.context.getCamera();
+const labelRenderer = viewer.context.getRenderer2D();
 
 //CARGA DEL MODELO
 const modelURL = setupProject()[1];
@@ -65,7 +69,6 @@ const ifcTypes = returnTypesOfElements();
 //PROPIEDADES SACEEM
 const saceemPsets = getAllSaceem(psets);
 const saceemParams = getAllSaceemParameters(saceemPsets);
-
 const saceemTypes = getAllSaceemTypes(saceemParams);
 const saceemIds = getAllSaceemIds(saceemParams);
 const saceemConcreteDates = getAllSaceemConcreteDates(saceemParams);
@@ -75,6 +78,7 @@ const presacStatus = getAllSaceemProcedences(saceemParams);
 
 //CONFIGURACIÓN BOTONES
 let activeSelection = false;
+let activeSearching = false;
 let clippingPlaneActive = false;
 let planFloorActive = false;
 let treeActive = false;
@@ -103,6 +107,23 @@ selectButton.onclick = () => {
     viewer.IFC.selector.unpickIfcItems();
   }
 };
+
+searchButton.onclick = async () => {
+  activeSearching = !activeSearching;
+  if(activeSearching){
+    searchButton.classList.add("active-button");
+    const searchMessage = window.prompt("Ingresa el ID del elemento:");
+    menuHtml.appendChild(propMenu);
+    menuHtml.appendChild(propContent);
+    const result = await viewer.IFC.selector.pickIfcItemsByID(model.modelID,[parseInt(searchMessage)],true);
+    propertiesPanel(result);
+  }else{
+    searchButton.classList.remove("active-button");
+    removeAllChildren(menuHtml);
+    menuHtml.classList.remove("ifc-property-menu");
+    viewer.IFC.selector.unpickIfcItems();
+  }
+}
 
 calcVolumButton.onclick = () => {
   calcActive = !calcActive;
@@ -268,7 +289,6 @@ window.ondblclick = async () => {
   if (activeSelection) {
     const result = await viewer.IFC.selector.pickIfcItem(true);
     propertiesPanel(result);
-    console.log(result);
   }
   if (clippingPlaneActive) {
     viewer.clipper.createPlane();
@@ -366,6 +386,40 @@ document.addEventListener("click", async (e) => {
     contextMenu.style.display = "none";
     viewer.IFC.selector.unHighlightIfcItems();
     showAllItems(getAllIds());
+  }
+
+  if (e.target.getAttribute("id") === "new-annotation") {
+    contextMenu.style.display = "none";
+    const location = rigthClickResult.point;
+
+    const labelContainer = document.createElement("div");
+    labelContainer.className = "base-label";
+    
+    const deleteButton = document.createElement("button");
+    deleteButton.textContent = "x";
+    deleteButton.className = "delete-button hidden";
+    labelContainer.appendChild(deleteButton);
+    
+    const label = document.createElement("p");
+    label.className = "label";
+    labelContainer.appendChild(label);
+    
+    const message = window.prompt("Describe la incidencia:");
+    label.textContent = message;
+    
+    const labelObject = new CSS2DObject(labelContainer);
+    labelObject.position.copy(location);
+    scene.add(labelObject);
+
+    deleteButton.onclick = () => {
+      labelObject.removeFromParent();
+      labelObject.element = null;
+      labelContainer.remove;
+    }
+    
+    labelContainer.onmouseenter = () => deleteButton.classList.remove("hidden");
+    labelContainer.onmouseleave = () => deleteButton.classList.add("hidden");
+  
   }
 });
 
