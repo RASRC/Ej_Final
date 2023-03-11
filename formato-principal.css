@@ -64,12 +64,15 @@ header {
     margin: 1rem;
     background-color: rgb(255, 255, 255);
     border: 3px solid #000000;
-    text-decoration: none;
+    text-decoration:solid;
     padding: 5rem;
-    background-image: url(./static/logo-a326242dd945bcc271d193f7e6d2f054.png);
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
+}
+
+.proyecto div {
+    top: 1rem;
 }
 
 .proyecto:hover {
@@ -497,4 +500,9 @@ tfoot {
     backdrop-filter: blur(8px);
     border-radius: 1rem;
     pointer-events: all;
+}
+
+.button-lock{
+    opacity: 30%;
+    pointer-events: none;
 }

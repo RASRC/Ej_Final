@@ -130,38 +130,58 @@ searchButton.onclick = async () => {
   }
 }
 
-calcVolumButton.onclick = () => {
-  calcActive = !calcActive;
-  if (calcActive) {
-    calcVolumButton.classList.add("active-button");
-    createCalculatorStructure(calculatorContainer);
-    calculatorContainer.style.zIndex=2;
-    excelButton.style.display = "initial";
-
-  } else {
-    calcVolumButton.classList.remove("active-button");
-    calculatorContainer.style.zIndex=0;
-    removeAllChildren(calculatorContainer);
-    calcGroup = [];
-    totalVolum = 0;
-    excelButton.style.display = "none";
-
-  }
-};
-
 clippingButton.onclick = () => {
   clippingPlaneActive = !clippingPlaneActive;
   if (clippingPlaneActive) {
     clippingButton.classList.add("active-button");
     viewer.clipper.active = clippingPlaneActive;
+    lockButtons([planFloorButton,treeButton,visionButton,spatialButton,timeButton,dimButton,calcVolumButton],true);
   } else {
     clippingButton.classList.remove("active-button");
     viewer.clipper.deleteAllPlanes();
+    lockButtons([planFloorButton,treeButton,visionButton,spatialButton,timeButton,dimButton,calcVolumButton],false);
   }
 };
 
 extendButton.onclick = () => {
   viewer.context.ifcCamera.cameraControls.fitToSphere(model, true);
+};
+
+planFloorButton.onclick = () => {
+  planFloorActive = !planFloorActive;
+  if (planFloorActive) {
+    planFloorButton.classList.add("active-button");
+    floorContainer.style.zIndex=2;
+    loadPlans(model.modelID);
+    lockButtons([clippingButton,treeButton,visionButton,spatialButton,timeButton,calcVolumButton],true);
+  } else {
+    viewer.plans.exitPlanView();
+    viewer.edges.toggle("bordes", false);
+    //togglePostProduction(true);
+    planFloorButton.classList.remove("active-button");
+    floorContainer.style.zIndex=0;
+    removeAllChildren(floorContainer);
+    lockButtons([clippingButton,treeButton,visionButton,spatialButton,timeButton,calcVolumButton],false);
+  }
+};
+
+treeButton.onclick = async () => {
+  treeActive = !treeActive;
+  if (treeActive) {
+    treeButton.classList.add("active-button");
+    treeContainer.style.zIndex=2;
+    viewer.IFC.selector.fadeAwayModels();
+    createIFCStructureTree(treeContainer);
+    lockButtons([clippingButton,planFloorButton,visionButton,spatialButton,timeButton,calcVolumButton],true);
+  } else {
+    treeButton.classList.remove("active-button");
+    viewer.IFC.selector.unHighlightIfcItems();
+    removeAllChildren(menuHtml);
+    menuHtml.classList.remove("ifc-property-menu");
+    treeContainer.style.zIndex=0;
+    removeAllChildren(treeContainer);
+    lockButtons([clippingButton,planFloorButton,visionButton,spatialButton,timeButton,calcVolumButton],false);
+  }
 };
 
 visionButton.onclick = async () => {
@@ -172,8 +192,7 @@ visionButton.onclick = async () => {
     subsetOfModel.removeFromParent();
     togglePickable(subsetOfModel, false);
     await createCheckBoxStructure();
-    //console.log(viewer.context.items.pickableIfcModels);
-    //console.log(categorySubsets)
+    lockButtons([clippingButton,planFloorButton,treeButton,spatialButton,timeButton,calcVolumButton],true);
   } else {
     for(let subset in categorySubsets){
       categorySubsets[subset].removeFromParent();
@@ -184,6 +203,7 @@ visionButton.onclick = async () => {
     visionButton.classList.remove("active-button");
     checkboxesOfType.style.zIndex=0;
     removeAllChildren(checkboxesOfType);
+    lockButtons([clippingButton,planFloorButton,treeButton,spatialButton,timeButton,calcVolumButton],false);
   }
 };
 
@@ -195,8 +215,7 @@ spatialButton.onclick = () => {
     subsetOfModel.removeFromParent();
     togglePickable(subsetOfModel, false);
     createComplexCheckBoxStructure(complexCheckboxes);
-    //console.log(viewer.context.items.pickableIfcModels);
-    //console.log(categoryPerLevelSubsets)
+    lockButtons([clippingButton,planFloorButton,treeButton,visionButton,timeButton,calcVolumButton],true);
   } else {
     for(let subset in categoryPerLevelSubsets){
       categoryPerLevelSubsets[subset].removeFromParent();
@@ -207,6 +226,7 @@ spatialButton.onclick = () => {
     spatialButton.classList.remove("active-button");
     complexCheckboxes.style.zIndex=0;
     removeAllChildren(complexCheckboxes);
+    lockButtons([clippingButton,planFloorButton,treeButton,visionButton,timeButton,calcVolumButton],false);
   }
 };
 
@@ -218,21 +238,20 @@ timeButton.onclick = () => {
     subsetOfModel.removeFromParent();
     togglePickable(subsetOfModel, false);
     createTimeCheckBoxStructure(timeContainer);
-    //console.log(viewer.context.items.pickableIfcModels);
-    //console.log(dateSubsets);
+    lockButtons([clippingButton,planFloorButton,treeButton,visionButton,spatialButton,calcVolumButton],true);
   } else {
     for(let subset in dateSubsets){
       if (dateSubsets[subset]){
         dateSubsets[subset].removeFromParent();
       }
       togglePickable(dateSubsets[subset], false);
-      //console.log(viewer.context.items.pickableIfcModels);
     }
     scene.add(subsetOfModel);
     togglePickable(subsetOfModel, true);
     timeContainer.style.zIndex=0;
     removeAllChildren(timeContainer);
     timeButton.classList.remove("active-button");
+    lockButtons([clippingButton,planFloorButton,treeButton,visionButton,spatialButton,calcVolumButton],false);
   }
 };
 
@@ -248,36 +267,22 @@ dimButton.onclick = () => {
   }
 };
 
-planFloorButton.onclick = () => {
-  planFloorActive = !planFloorActive;
-  if (planFloorActive) {
-    planFloorButton.classList.add("active-button");
-    floorContainer.style.zIndex=2;
-    loadPlans(model.modelID);
+calcVolumButton.onclick = () => {
+  calcActive = !calcActive;
+  if (calcActive) {
+    calcVolumButton.classList.add("active-button");
+    createCalculatorStructure(calculatorContainer);
+    calculatorContainer.style.zIndex=2;
+    excelButton.style.display = "initial";
+    lockButtons([clippingButton,planFloorButton,treeButton,visionButton,spatialButton,timeButton,dimButton],true);
   } else {
-    viewer.plans.exitPlanView();
-    viewer.edges.toggle("bordes", false);
-    //togglePostProduction(true);
-    planFloorButton.classList.remove("active-button");
-    floorContainer.style.zIndex=0;
-    removeAllChildren(floorContainer);
-  }
-};
-
-treeButton.onclick = async () => {
-  treeActive = !treeActive;
-  if (treeActive) {
-    treeButton.classList.add("active-button");
-    treeContainer.style.zIndex=2;
-    viewer.IFC.selector.fadeAwayModels();
-    createIFCStructureTree(treeContainer);
-  } else {
-    treeButton.classList.remove("active-button");
-    viewer.IFC.selector.unHighlightIfcItems();
-    removeAllChildren(menuHtml);
-    menuHtml.classList.remove("ifc-property-menu");
-    treeContainer.style.zIndex=0;
-    removeAllChildren(treeContainer);
+    calcVolumButton.classList.remove("active-button");
+    calculatorContainer.style.zIndex=0;
+    removeAllChildren(calculatorContainer);
+    calcGroup = [];
+    totalVolum = 0;
+    excelButton.style.display = "none";
+    lockButtons([clippingButton,planFloorButton,treeButton,visionButton,spatialButton,timeButton,dimButton],false);
   }
 };
 
@@ -1424,4 +1429,16 @@ function elementSaceemVolum(id){
   }).filter(item => item !== undefined)[0];
 
   return parseFloat(volum).toFixed(2);
+}
+
+function lockButtons(groupOfButtons,lock){
+  if(lock){
+    for (let item of groupOfButtons){
+      item.classList.add("button-lock");
+    }
+  }else{
+    for (let item of groupOfButtons){
+      item.classList.remove("button-lock");
+    }
+  }
 }
