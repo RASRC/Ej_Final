@@ -27,7 +27,8 @@ for (let project of proyectos){
     nameLabel.textContent = nombreProyecto;
     newProject.style.backgroundImage = `url('${imageURL}')`;
 
-    const baseURLNextPage = "http://127.0.0.1:5500/proyecto.html";
+    //const baseURLNextPage = "http://127.0.0.1:5500/proyecto.html";
+    const baseURLNextPage = "https://rasrc.github.io/Ej_Final/proyecto.html";
     const newURL = baseURLNextPage + `?id=${idProyecto}`;
 
     newProject.href = newURL;
