@@ -1,4 +1,4 @@
-import { Color, LineBasicMaterial, MeshBasicMaterial} from "three";
+import { Color, LineBasicMaterial, MeshBasicMaterial, ObjectLoader} from "three";
 import { IfcViewerAPI } from "web-ifc-viewer";
 import { proyectos } from "./proyectos.js";
 import { ifcTraducidoEsp } from "./ifcTranslate";
@@ -448,7 +448,6 @@ document.addEventListener("click", async (e) => {
     
     labelContainer.onmouseenter = () => deleteButton.classList.remove("hidden");
     labelContainer.onmouseleave = () => deleteButton.classList.add("hidden");
-  
   }
 
   if (e.target.getAttribute("id") === "save-annotation"){
@@ -481,6 +480,10 @@ document.addEventListener("click", async (e) => {
       const rawFileData = await fetch(selectedFileURL);
       const annotationsProperties = await rawFileData.json();
       console.log(annotationsProperties);
+      for (let item of annotationsProperties){
+        const newLabel = new CSS2DObject(item.object);
+        console.log(newLabel);
+      }
     };
   }
 });
