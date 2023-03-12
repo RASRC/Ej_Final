@@ -1,4 +1,4 @@
-import { Color, LineBasicMaterial, MeshBasicMaterial, ObjectLoader} from "three";
+import { Color, LineBasicMaterial, MeshBasicMaterial, ObjectLoader, Vector3} from "three";
 import { IfcViewerAPI } from "web-ifc-viewer";
 import { proyectos } from "./proyectos.js";
 import { ifcTraducidoEsp } from "./ifcTranslate";
@@ -451,7 +451,14 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.getAttribute("id") === "save-annotation"){
-    const annotationsSerialized = annotations.map((item) => {return JSON.stringify(item)});
+    const exportObject = annotations.map((item)=>{
+      return {
+        position: item.position,
+        name: item.element.textContent
+      }
+    });
+    
+    const annotationsSerialized = exportObject.map((item) => {return JSON.stringify(item)});
     const annotationFormat = annotationsSerialized.map((item) => {
       if(annotationsSerialized.length===1){
         return `[${item}]`
@@ -479,10 +486,37 @@ document.addEventListener("click", async (e) => {
       const selectedFileURL = URL.createObjectURL(selectedFile);
       const rawFileData = await fetch(selectedFileURL);
       const annotationsProperties = await rawFileData.json();
-      console.log(annotationsProperties);
       for (let item of annotationsProperties){
-        const newLabel = new CSS2DObject(item.object);
-        console.log(newLabel);
+        const location = new Vector3(item.position.x,item.position.y,item.position.z);
+        
+        const labelContainer = document.createElement("div");
+        labelContainer.className = "base-label";
+        
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = "x";
+        deleteButton.className = "delete-button hidden";
+        labelContainer.appendChild(deleteButton);
+      
+        const label = document.createElement("p");
+        label.className = "label";
+        labelContainer.appendChild(label);
+        label.textContent = item.name;
+      
+        const labelObject = new CSS2DObject(labelContainer);
+        labelObject.position.copy(location);
+        scene.add(labelObject);
+        annotations.push(labelObject);
+
+        deleteButton.onclick = () => {
+          labelObject.removeFromParent();
+          labelObject.element = null;
+          labelContainer.remove;
+          const newAnnotationGroup = annotations.filter((item) => {return item !== labelObject});
+          annotations = newAnnotationGroup;
+        }
+        
+        labelContainer.onmouseenter = () => deleteButton.classList.remove("hidden");
+        labelContainer.onmouseleave = () => deleteButton.classList.add("hidden");
       }
     };
   }
