@@ -65,14 +65,15 @@ header {
     background-color: rgb(255, 255, 255);
     border: 3px solid #000000;
     text-decoration:solid;
+    font-weight: bold;
     padding: 5rem;
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
 }
 
-.proyecto div {
-    top: 1rem;
+.proyecto .space-for-title {
+    height: 400%;
 }
 
 .proyecto:hover {
@@ -505,4 +506,8 @@ tfoot {
 .button-lock{
     opacity: 30%;
     pointer-events: none;
+}
+
+.item input{
+    visibility: collapse;
 }

@@ -39,14 +39,14 @@ const calcVolumButton = document.getElementById("calculator-button");
 const visionButton = document.getElementById("visibility-button");
 const excelButton = document.getElementById("excel-button");
 const searchButton = document.getElementById("search-button");
+const fristPersonButton = document.getElementById("frist-person-button");
+const saveAnnotationButton = document.getElementById("save-annotation");
 
 //CONFIGURACION DE LA ESCENA Y SUS ELEMENTOS
 const viewer = await setupScene();
 setupMultiThreading();
 setupProgressNotification();
 const scene = viewer.context.getScene();
-const camera = viewer.context.getCamera();
-const labelRenderer = viewer.context.getRenderer2D();
 
 //CARGA DEL MODELO
 const modelURL = setupProject()[1];
@@ -89,6 +89,8 @@ let dimActive = false;
 let calcActive = false;
 let calcGroup = [];
 let totalVolum
+let annotations = [];
+let fristPersonActive = false;
 
 exitButton.onclick = () => {
   virtualLink("./index.html");
@@ -146,6 +148,18 @@ clippingButton.onclick = () => {
 extendButton.onclick = () => {
   viewer.context.ifcCamera.cameraControls.fitToSphere(model, true);
 };
+
+fristPersonButton.onclick = () => {
+  fristPersonActive = !fristPersonActive;
+  if(fristPersonActive){
+    fristPersonButton.classList.add("active-button");
+    viewer.context.ifcCamera.setNavigationMode(1);
+  }else{
+    viewer.context.ifcCamera.setNavigationMode(0);
+    viewer.context.ifcCamera.cameraControls.setOrbitPoint(0,0,0);
+    fristPersonButton.classList.remove("active-button");
+  }
+}
 
 planFloorButton.onclick = () => {
   planFloorActive = !planFloorActive;
@@ -354,14 +368,16 @@ window.addEventListener("contextmenu", async (e) => {
   rigthClickResult = viewer.context.castRayIfc();
   const hideElement = document.getElementById("hide-element");
   const isolateElement = document.getElementById("isolate-element");
+  const newAnnotation = document.getElementById("new-annotation");
   if (rigthClickResult === null){
     hideElement.classList.add("option-close");
     isolateElement.classList.add("option-close");
+    newAnnotation.classList.add("option-close");
   } else {
     hideElement.classList.remove("option-close");
-    isolateElement.classList.remove("option-close");    
+    isolateElement.classList.remove("option-close");
+    newAnnotation.classList.remove("option-close");  
   }
-
 });
 
 document.addEventListener("click", async (e) => {
@@ -420,16 +436,52 @@ document.addEventListener("click", async (e) => {
     const labelObject = new CSS2DObject(labelContainer);
     labelObject.position.copy(location);
     scene.add(labelObject);
+    annotations.push(labelObject);
 
     deleteButton.onclick = () => {
       labelObject.removeFromParent();
       labelObject.element = null;
       labelContainer.remove;
+      const newAnnotationGroup = annotations.filter((item) => {return item !== labelObject});
+      annotations = newAnnotationGroup;
     }
     
     labelContainer.onmouseenter = () => deleteButton.classList.remove("hidden");
     labelContainer.onmouseleave = () => deleteButton.classList.add("hidden");
   
+  }
+
+  if (e.target.getAttribute("id") === "save-annotation"){
+    const annotationsSerialized = annotations.map((item) => {return JSON.stringify(item)});
+    const annotationFormat = annotationsSerialized.map((item) => {
+      if(annotationsSerialized.length===1){
+        return `[${item}]`
+      }else{
+        if(annotationsSerialized.indexOf(item)===0){
+          return `[${item},`
+        }else if (annotationsSerialized.indexOf(item)===annotationsSerialized.length-1){
+          return `${item}]`
+        }else{
+          return `${item},`
+        }
+      }
+    });
+    const file = new File(annotationFormat,"annotations");
+    const fileURL = URL.createObjectURL(file);
+    virtualLink(fileURL, "annotations.json");
+  }
+
+  if (e.target.getAttribute("id") === "load-annotation"){
+    const inputAnnotation = document.getElementById("load-annotation-file");
+    inputAnnotation.click();
+    inputAnnotation.onchange = async () => {
+      contextMenu.style.display = "none";
+      const selectedFile = inputAnnotation.files[0];
+      const selectedFileURL = URL.createObjectURL(selectedFile);
+      const rawFileData = await fetch(selectedFileURL);
+      const annotationsProperties = await rawFileData.json();
+      console.log(annotationsProperties);
+    };
   }
 });
 

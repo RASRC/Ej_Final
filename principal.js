@@ -19,7 +19,10 @@ for (let project of proyectos){
     const idProyecto = project.id;
     const imageURL = project.image;
 
-    const nameLabel = document.createElement("div")
+    const space01 = document.createElement("div");
+    newProject.appendChild(space01);
+    space01.className = "space-for-title";
+    const nameLabel = document.createElement("div");
     newProject.appendChild(nameLabel);
     nameLabel.textContent = nombreProyecto;
     newProject.style.backgroundImage = `url('${imageURL}')`;
