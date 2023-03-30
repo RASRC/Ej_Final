@@ -830,8 +830,11 @@ function createPropertiesMenu(properties, saceemProperties, container) {
       const propKey = saceemProp.Name.value;
       let propValue = saceemProp.NominalValue.value;
       if (Number.isNaN(parseFloat(propValue))) {
-          let decodedValue = DecodeIFCString (propValue);
-          propValue = decodedValue;
+        if (propValue.includes("\X\B1")){
+          propValue.replace("\X\B1","±");
+        }else{
+          propValue;
+        } 
       } else {
         if(propKey==="SC_FECHA DE LLENADO" || propKey==="SC_LOTE HORMIGON" || propKey==="SC_FECHA DE MONTAJE" || propKey==="SC_TEN_FECHA DE TENSADO" || propKey==="SC_TEN_FECHA DE CORTE" || propKey==="SC_FECHA LLEGADA OBRA"){
           const year = propValue.substring(2,-1);
