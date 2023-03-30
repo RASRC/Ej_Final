@@ -830,7 +830,8 @@ function createPropertiesMenu(properties, saceemProperties, container) {
       const propKey = saceemProp.Name.value;
       let propValue = saceemProp.NominalValue.value;
       if (Number.isNaN(parseFloat(propValue))) {
-        propValue;
+          let decodedValue = DecodeIFCString (propValue);
+          propValue = decodedValue;
       } else {
         if(propKey==="SC_FECHA DE LLENADO" || propKey==="SC_LOTE HORMIGON" || propKey==="SC_FECHA DE MONTAJE" || propKey==="SC_TEN_FECHA DE TENSADO" || propKey==="SC_TEN_FECHA DE CORTE" || propKey==="SC_FECHA LLEGADA OBRA"){
           const year = propValue.substring(2,-1);
@@ -1530,4 +1531,17 @@ function lockButtons(groupOfButtons,lock){
       item.classList.remove("button-lock");
     }
   }
+}
+
+function DecodeIFCString (ifcString)
+{
+    const ifcUnicodeRegEx = /\\X2\\(.*?)\\X0\\/uig;
+    let resultString = ifcString;
+    let match = ifcUnicodeRegEx.exec (ifcString);
+    while (match) {
+        const unicodeChar = String.fromCharCode (parseInt (match[1], 16));
+        resultString = resultString.replace (match[0], unicodeChar);
+        match = ifcUnicodeRegEx.exec (ifcString);
+    }
+    return resultString;
 }
